@@ -1,0 +1,79 @@
+#!/bin/bash
+# light
+
+function usage() {
+   echo "usage: light [-vh] [-i ip] [-p port] [-d deviceid] <command>" >&2;
+   echo "       -h help" >&2;
+   echo "       -i ip or IP env" >&2;
+   echo "       -p port or PORT env" >&2;
+   echo "       -d device-id or DEVICEID env" >&2;
+   echo >&2;
+   echo "commands: on">&2;
+   echo "          off">&2;
+   echo "          color R G B L (red green blue luminance)">&2;
+   echo >&2;
+   echo "Control some light." >&2;
+}
+# Allow for some environment variables.
+port="$PORT";
+ip="$IP";
+deviceid="$DEVICEID";
+verbose=0
+
+while getopts hvi:p:d: opt; do
+	case $opt in
+      h) usage; exit 1;;
+      v) verbose=1;;
+      d) deviceid="$OPTARG";;
+      p) port="$OPTARG";;
+      i) ip="$OPTARG";;
+      *) echo "error: invalid option given." >&2; usage;;
+	esac
+done
+shift $[ OPTIND - 1 ]
+
+if [ $# -lt 1 ]; then
+    echo "error: no command given." >&2;
+    usage;
+    exit 2;
+fi
+command="$1";
+shift;
+case "$command" in
+  on|off)
+      cat <<EOF
+{
+    "deviceid": "$deviceid",
+    "data": {
+        "switch": "$command"
+    }
+}
+EOF
+      ;;
+  color)
+      if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+          echo "error: expected 3 or 4 arguments for color: R G B L but got $#." >&2;
+          exit 3;
+      fi
+      cat <<EOF
+{
+    "deviceid": "$deviceid",
+    "data":{
+        "ltype": "color",
+        "color": {"br": ${4-100}, "r": $1, "g": $2, "b": $3}
+    }
+}
+EOF
+      ;;
+  *)
+      echo "error: invalid command" >&2;
+      exit 4;;
+esac \
+    | if [ $verbose -eq 1 ]; then
+        tee /dev/stderr;
+    else
+        cat;
+    fi \
+    | curl -X POST "http://$ip:$port/zeroconf/info" \
+    -H 'Content-Type: application/json'
+# Pipe that shit to curl, yo.
