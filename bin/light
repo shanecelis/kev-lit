@@ -3,6 +3,7 @@
 
 function usage() {
    echo "usage: light [-vh] [-i ip] [-p port] [-d deviceid] <command>" >&2;
+   echo "       -v verbose" >&2;
    echo "       -h help" >&2;
    echo "       -i ip or IP env" >&2;
    echo "       -p port or PORT env" >&2;
@@ -10,7 +11,8 @@ function usage() {
    echo >&2;
    echo "commands: on">&2;
    echo "          off">&2;
-   echo "          color R G B L (red green blue luminance)">&2;
+   echo "          color <red> <green> <blue> [luminance]" >&2;
+   echo "                RGB in [0, 255] luminance in [0, 100]" >&2;
    echo >&2;
    echo "Control some light." >&2;
 }
@@ -18,19 +20,20 @@ function usage() {
 port="$PORT";
 ip="$IP";
 deviceid="$DEVICEID";
-verbose=0
+verbose=0;
 
+# Parse arguments.
 while getopts hvi:p:d: opt; do
-	case $opt in
+    case $opt in
       h) usage; exit 1;;
       v) verbose=1;;
       d) deviceid="$OPTARG";;
       p) port="$OPTARG";;
       i) ip="$OPTARG";;
       *) echo "error: invalid option given." >&2; usage;;
-	esac
+    esac
 done
-shift $[ OPTIND - 1 ]
+shift $[ OPTIND - 1 ];
 
 if [ $# -lt 1 ]; then
     echo "error: no command given." >&2;
@@ -39,6 +42,7 @@ if [ $# -lt 1 ]; then
 fi
 command="$1";
 shift;
+
 case "$command" in
   on|off)
       cat <<EOF
@@ -75,5 +79,5 @@ esac \
         cat;
     fi \
     | curl -X POST "http://$ip:$port/zeroconf/info" \
-    -H 'Content-Type: application/json'
+    -H 'Content-Type: application/json';
 # Pipe that shit to curl, yo.
